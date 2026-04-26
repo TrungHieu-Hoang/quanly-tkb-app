@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Thời Khóa Biểu</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- ========== Loading Screen ========== -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-content">
+            <div class="loading-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+            </div>
+            <div class="loading-spinner"></div>
+            <p class="loading-text">Đang kết nối...</p>
+        </div>
+    </div>
+
+    <!-- ========== Auth Screen ========== -->
+    <div class="auth-screen" id="authScreen" style="display: none;">
+        <div class="auth-bg-shapes">
+            <div class="shape shape-1"></div>
+            <div class="shape shape-2"></div>
+            <div class="shape shape-3"></div>
+        </div>
+        <div class="auth-container">
+            <!-- Logo -->
+            <div class="auth-logo">
+                <div class="auth-logo-circle">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                </div>
+                <h1 class="auth-app-name">Thời Khóa Biểu</h1>
+                <p class="auth-app-desc">Quản lý lịch học thông minh</p>
+            </div>
+
+            <!-- Login Card -->
+            <div class="auth-card" id="loginCard">
+                <h2 class="auth-card-title">Đăng nhập</h2>
+                
+                <!-- Server Config Section (Toggled) -->
+                <div id="serverConfigSection" style="margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-secondary);">Máy chủ nội bộ (LAN):</span>
+                        <button type="button" onclick="toggleServerConfig()" style="background:none;border:none;color:var(--primary);font-size:0.85rem;cursor:pointer;">Đổi Server</button>
+                    </div>
+                    <div id="configFields" style="display: none;">
+                        <div class="auth-input-wrapper">
+                            <input type="text" id="serverUrlInput" placeholder="VD: http://192.168.1.5:3000" style="padding-left: 12px; font-size: 0.9rem;">
+                            <button type="button" onclick="saveServerUrl()" style="position:absolute; right:4px; top:50%; transform:translateY(-50%); background:var(--primary); color:white; border:none; border-radius:6px; padding:6px 12px; font-size:0.8rem; cursor:pointer;">Lưu</button>
+                        </div>
+                    </div>
+                </div>
+
+                <form id="loginForm" autocomplete="off">
+                    <div class="auth-field">
+                        <label for="loginEmail">Email</label>
+                        <div class="auth-input-wrapper">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                <polyline points="22,6 12,13 2,6"></polyline>
+                            </svg>
+                            <input type="email" id="loginEmail" placeholder="Nhập email" required>
+                        </div>
+                    </div>
+                    <div class="auth-field">
+                        <label for="loginPassword">Mật khẩu</label>
+                        <div class="auth-input-wrapper">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                            <input type="password" id="loginPassword" placeholder="Nhập mật khẩu" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="auth-btn" id="loginBtn">
+                        <span>Đăng nhập</span>
+                        <div class="btn-spinner" style="display:none"></div>
+                    </button>
+                </form>
+                <p class="auth-switch" id="showRegisterLink" style="display: none;">
+                    Lần đầu sử dụng? <a href="#" id="toRegister">Tạo tài khoản Admin</a>
+                </p>
+            </div>
+
+            <!-- Register Card (Admin first time) -->
+            <div class="auth-card" id="registerCard" style="display: none;">
+                <h2 class="auth-card-title">Tạo tài khoản Admin</h2>
+                <p class="auth-card-subtitle">Tài khoản đầu tiên sẽ có quyền quản trị</p>
+                <form id="registerForm" autocomplete="off">
+                    <div class="auth-field">
+                        <label for="regName">Tên hiển thị</label>
+                        <div class="auth-input-wrapper">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                            <input type="text" id="regName" placeholder="VD: Nguyễn Văn A" required>
+                        </div>
+                    </div>
+                    <div class="auth-field">
+                        <label for="regEmail">Email</label>
+                        <div class="auth-input-wrapper">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                <polyline points="22,6 12,13 2,6"></polyline>
+                            </svg>
+                            <input type="email" id="regEmail" placeholder="admin@example.com" required>
+                        </div>
+                    </div>
+                    <div class="auth-field">
+                        <label for="regPassword">Mật khẩu</label>
+                        <div class="auth-input-wrapper">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                            <input type="password" id="regPassword" placeholder="Tối thiểu 6 ký tự" required minlength="6">
+                        </div>
+                    </div>
+                    <div class="auth-field">
+                        <label for="regConfirm">Xác nhận mật khẩu</label>
+                        <div class="auth-input-wrapper">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            <input type="password" id="regConfirm" placeholder="Nhập lại mật khẩu" required minlength="6">
+                        </div>
+                    </div>
+                    <button type="submit" class="auth-btn" id="registerBtn">
+                        <span>Tạo tài khoản</span>
+                        <div class="btn-spinner" style="display:none"></div>
+                    </button>
+                </form>
+                <p class="auth-switch">
+                    Đã có tài khoản? <a href="#" id="toLogin">Đăng nhập</a>
+                </p>
+            </div>
+
+            <!-- Auth Error Message -->
+            <div class="auth-error" id="authError" style="display: none;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                </svg>
+                <span id="authErrorText"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== Main App ========== -->
+    <div class="app-container" id="appContainer" style="display: none;">
+        <!-- Header -->
+        <header class="app-header">
+            <button class="btn-back" id="btnBack" title="Quay lại">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <h1 class="header-title">Thời khóa biểu</h1>
+
+            <!-- Sync Status Indicator -->
+            <div class="sync-indicator" id="syncIndicator" title="Đã đồng bộ">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+            </div>
+
+            <!-- Add Button (admin only) -->
+            <button class="btn-add" id="btnAdd" title="Thêm môn học" style="display: none;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+            </button>
+
+            <!-- User Avatar -->
+            <button class="user-avatar-btn" id="userAvatarBtn">
+                <span class="user-initial" id="userInitial">A</span>
+            </button>
+        </header>
+
+        <!-- User Dropdown -->
+        <div class="user-dropdown-overlay" id="userDropdownOverlay" style="display: none;">
+            <div class="user-dropdown" id="userDropdown">
+                <div class="user-dropdown-info">
+                    <div class="dropdown-avatar">
+                        <span id="dropdownInitial">A</span>
+                    </div>
+                    <div class="dropdown-details">
+                        <span class="dropdown-name" id="dropdownName">Admin</span>
+                        <span class="dropdown-email" id="dropdownEmail">admin@email.com</span>
+                    </div>
+                    <span class="role-badge" id="dropdownBadge">Admin</span>
+                </div>
+                <div class="dropdown-divider"></div>
+                <button class="dropdown-action" id="btnManageUsers" style="display: none;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span>Quản lý người dùng</span>
+                </button>
+                <button class="dropdown-action danger" id="btnLogout">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    <span>Đăng xuất</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Tab Label -->
+        <div class="tabs">
+            <button class="tab active" data-tab="lichHoc" id="tabLichHoc">Lịch Học</button>
+        </div>
+
+        <!-- View Controls -->
+        <div class="view-controls">
+            <div class="date-display" id="dateDisplay" style="position: relative;">
+                <input type="date" id="nativeDatePicker" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; z-index: 10;">
+                <span id="dateText">CN, 25/04/2026</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Week Navigator (hidden by default) -->
+        <div class="week-navigator" id="weekNavigator" style="display: none;">
+            <div class="week-days" id="weekDays"></div>
+        </div>
+
+        <!-- Month Calendar (hidden by default) -->
+        <div class="month-calendar" id="monthCalendar" style="display: none;">
+            <div class="calendar-header-row">
+                <span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span class="sat">T7</span><span class="sun">CN</span>
+            </div>
+            <div class="calendar-body" id="calendarBody"></div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="content-area" id="contentArea">
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState">
+                <div class="empty-illustration">
+                    <svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <ellipse cx="100" cy="175" rx="80" ry="12" fill="#E8ECF4"/>
+                        <rect x="40" y="60" width="120" height="100" rx="12" fill="#F4A261"/>
+                        <rect x="40" y="60" width="120" height="20" rx="12" fill="#E76F51"/>
+                        <circle cx="70" cy="130" r="6" fill="#2B2D42"/>
+                        <circle cx="130" cy="130" r="6" fill="#2B2D42"/>
+                        <path d="M85 148 Q100 140 115 148" stroke="#2B2D42" stroke-width="3" stroke-linecap="round" fill="none"/>
+                        <rect x="110" y="30" width="40" height="50" rx="4" fill="#A8DADC" transform="rotate(15 130 55)"/>
+                        <text x="120" y="55" fill="#2B2D42" font-size="18" font-weight="bold" transform="rotate(15 130 55)">?</text>
+                        <circle cx="55" cy="50" r="12" fill="none" stroke="#F4A261" stroke-width="2"/>
+                        <text x="51" y="55" fill="#F4A261" font-size="14" font-weight="bold">!</text>
+                    </svg>
+                </div>
+                <p class="empty-text">Không có dữ liệu hiển thị</p>
+                <p class="empty-subtext" id="emptySubtext">Nhấn nút + để thêm môn học mới</p>
+            </div>
+
+            <!-- Schedule Cards Container -->
+            <div class="schedule-cards" id="scheduleCards"></div>
+        </div>
+
+        <!-- Scroll to top button -->
+        <button class="btn-scroll-top" id="btnScrollTop" style="display: none;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="18 15 12 9 6 15"></polyline>
+            </svg>
+        </button>
+
+        <!-- View Mode Dropdown -->
+        <div class="dropdown-overlay" id="viewModeDropdown" style="display: none;">
+            <div class="dropdown-menu">
+                <button class="dropdown-item active" data-mode="day">
+                    <span>Theo ngày</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </button>
+                <button class="dropdown-item" data-mode="week">
+                    <span>Theo tuần</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </button>
+                <button class="dropdown-item" data-mode="month">
+                    <span>Theo tháng</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== Add/Edit Subject Modal ========== -->
+    <div class="modal-overlay" id="modalOverlay" style="display: none;">
+        <div class="modal" id="modalForm">
+            <div class="modal-header">
+                <h2 id="modalTitle">Thêm môn học</h2>
+                <button class="modal-close" id="modalClose">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <form id="subjectForm">
+                <div class="form-group">
+                    <label for="subjectName">Tên môn học <span class="required">*</span></label>
+                    <input type="text" id="subjectName" placeholder="Tên môn học" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="periodStart">Tiết bắt đầu <span class="required">*</span></label>
+                        <input type="number" id="periodStart" min="1" max="15" placeholder="Bắt đầu" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="periodEnd">Tiết kết thúc <span class="required">*</span></label>
+                        <input type="number" id="periodEnd" min="1" max="15" placeholder="Kết thúc" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="timeStart">Giờ bắt đầu <span class="required">*</span></label>
+                        <input type="time" id="timeStart" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="timeEnd">Giờ kết thúc <span class="required">*</span></label>
+                        <input type="time" id="timeEnd" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="room">Phòng học <span class="required">*</span></label>
+                    <input type="text" id="room" placeholder="Phòng học" required>
+                </div>
+                <div class="form-group">
+                    <label for="lecturer">Giảng viên <span class="required">*</span></label>
+                    <input type="text" id="lecturer" placeholder="Giảng viên" required>
+                </div>
+                <div class="form-group">
+                    <label>Ngày học trong tuần <span class="required">*</span></label>
+                    <div class="day-picker" id="dayPicker">
+                        <label class="day-check"><input type="checkbox" value="1"><span>T2</span></label>
+                        <label class="day-check"><input type="checkbox" value="2"><span>T3</span></label>
+                        <label class="day-check"><input type="checkbox" value="3"><span>T4</span></label>
+                        <label class="day-check"><input type="checkbox" value="4"><span>T5</span></label>
+                        <label class="day-check"><input type="checkbox" value="5"><span>T6</span></label>
+                        <label class="day-check"><input type="checkbox" value="6"><span>T7</span></label>
+                        <label class="day-check"><input type="checkbox" value="0"><span>CN</span></label>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="dateFrom">Từ ngày <span class="required">*</span></label>
+                        <input type="date" id="dateFrom" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="dateTo">Đến ngày <span class="required">*</span></label>
+                        <input type="date" id="dateTo" required>
+                    </div>
+                </div>
+                <input type="hidden" id="editId" value="">
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" id="btnCancel">Hủy</button>
+                    <button type="submit" class="btn-save" id="btnSave">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========== Delete Subject Confirmation ========== -->
+    <div class="modal-overlay" id="deleteOverlay" style="display: none;">
+        <div class="modal modal-small">
+            <div class="modal-header">
+                <h2>Xác nhận xóa</h2>
+            </div>
+            <p class="delete-message">Bạn có chắc chắn muốn xóa môn học này?</p>
+            <div class="form-actions">
+                <button class="btn-cancel" id="btnDeleteCancel">Hủy</button>
+                <button class="btn-delete" id="btnDeleteConfirm">Xóa</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== User Management Modal (Admin) ========== -->
+    <div class="modal-overlay" id="userMgmtOverlay" style="display: none;">
+        <div class="modal modal-wide">
+            <div class="modal-header">
+                <h2>Quản lý người dùng</h2>
+                <button class="modal-close" id="userMgmtClose">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <button class="btn-add-user" id="btnAddUser">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Thêm người dùng</span>
+            </button>
+            <div class="user-list" id="userList">
+                <!-- Generated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== Add User Modal (Admin) ========== -->
+    <div class="modal-overlay" id="addUserOverlay" style="display: none;">
+        <div class="modal modal-small">
+            <div class="modal-header">
+                <h2>Thêm người dùng mới</h2>
+                <button class="modal-close" id="addUserClose">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <form id="addUserForm">
+                <div class="form-group">
+                    <label for="newUserName">Tên hiển thị <span class="required">*</span></label>
+                    <input type="text" id="newUserName" placeholder="Tên người dùng" required>
+                </div>
+                <div class="form-group">
+                    <label for="newUserEmail">Email <span class="required">*</span></label>
+                    <input type="email" id="newUserEmail" placeholder="email@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="newUserPassword">Mật khẩu <span class="required">*</span></label>
+                    <input type="password" id="newUserPassword" placeholder="Tối thiểu 6 ký tự" required minlength="6">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" id="addUserCancel">Hủy</button>
+                    <button type="submit" class="btn-save" id="addUserSaveBtn">Tạo tài khoản</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========== Delete User Confirmation (Admin) ========== -->
+    <div class="modal-overlay" id="deleteUserOverlay" style="display: none;">
+        <div class="modal modal-small">
+            <div class="modal-header">
+                <h2>Xác nhận xóa người dùng</h2>
+            </div>
+            <p class="delete-message" id="deleteUserMessage">Bạn có chắc chắn muốn xóa người dùng này?</p>
+            <div class="form-actions">
+                <button class="btn-cancel" id="btnDeleteUserCancel">Hủy</button>
+                <button class="btn-delete" id="btnDeleteUserConfirm">Xóa</button>
+            </div>
+        </div>
+    </div>
+
+    <script>window.IS_WEB_VERSION = true;</script>
+    <script src="app.js"></script>
+</body>
+</html>
