@@ -1,9 +1,10 @@
+require('dotenv').config();
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
-const fs = require('fs');
 const path = require('path');
+const mongoose = require('mongoose');
 
 // ========================================
 // Configuration
@@ -11,116 +12,87 @@ const path = require('path');
 const PORT = 3000;
 const JWT_SECRET = 'tkb-secret-2026-hoanghieu';
 const JWT_EXPIRES = '30d';
-const DB_FILE = path.join(__dirname, 'database.json');
 
 // ========================================
-// Simple JSON Database
+// MongoDB Connection & Schemas
 // ========================================
-class JsonDB {
-    constructor(filepath) {
-        this.filepath = filepath;
-        this.data = this._load();
-    }
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/tkb_db';
 
-    _load() {
-        try {
-            if (fs.existsSync(this.filepath)) {
-                return JSON.parse(fs.readFileSync(this.filepath, 'utf8'));
-            }
-        } catch (e) {
-            console.error('DB load error:', e.message);
-        }
-        return { users: [], schedules: [] };
-    }
+mongoose.connect(MONGO_URI)
+    .then(() => console.log('✅ Đã kết nối với MongoDB Cloud!'))
+    .catch(err => console.error('❌ Lỗi kết nối MongoDB:', err));
 
-    _save() {
-        fs.writeFileSync(this.filepath, JSON.stringify(this.data, null, 2), 'utf8');
-    }
+// --- User Schema ---
+const userSchema = new mongoose.Schema({
+    email: { type: String, required: true, unique: true },
+    displayName: { type: String, required: true },
+    password: { type: String, required: true },
+    role: { type: String, enum: ['admin', 'user'], default: 'user' },
+    createdAt: { type: Date, default: Date.now }
+});
 
-    // --- Users ---
-    getUsers() {
-        return this.data.users.map(u => ({ ...u, password: undefined }));
+userSchema.set('toJSON', {
+    virtuals: true,
+    versionKey: false,
+    transform: function (doc, ret) {
+        delete ret._id;
+        delete ret.password; // Do not send password in API responses
     }
+});
+const User = mongoose.model('User', userSchema);
 
-    findUserById(id) {
-        return this.data.users.find(u => u.id === id);
-    }
+// --- Schedule Schema ---
+const scheduleSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    periodStart: { type: Number, required: true },
+    periodEnd: { type: Number, required: true },
+    timeStart: { type: String, required: true },
+    timeEnd: { type: String, required: true },
+    room: { type: String, required: true },
+    lecturer: { type: String, required: true },
+    days: [{ type: Number, required: true }],
+    dateFrom: { type: String, required: true },
+    dateTo: { type: String, required: true },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+});
 
-    findUserByEmail(email) {
-        return this.data.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+scheduleSchema.set('toJSON', {
+    virtuals: true,
+    versionKey: false,
+    transform: function (doc, ret) {
+        delete ret._id;
     }
+});
+const Schedule = mongoose.model('Schedule', scheduleSchema);
 
-    createUser(user) {
-        this.data.users.push(user);
-        this._save();
-        return { ...user, password: undefined };
-    }
-
-    deleteUser(id) {
-        const idx = this.data.users.findIndex(u => u.id === id);
-        if (idx === -1) return false;
-        this.data.users.splice(idx, 1);
-        this._save();
-        return true;
-    }
-
-    // --- Schedules ---
-    getSchedules() {
-        return this.data.schedules;
-    }
-
-    createSchedule(schedule) {
-        this.data.schedules.push(schedule);
-        this._save();
-        return schedule;
-    }
-
-    updateSchedule(id, updates) {
-        const idx = this.data.schedules.findIndex(s => s.id === id);
-        if (idx === -1) return null;
-        this.data.schedules[idx] = { ...this.data.schedules[idx], ...updates };
-        this._save();
-        return this.data.schedules[idx];
-    }
-
-    deleteSchedule(id) {
-        const idx = this.data.schedules.findIndex(s => s.id === id);
-        if (idx === -1) return false;
-        this.data.schedules.splice(idx, 1);
-        this._save();
-        return true;
-    }
-}
 
 // ========================================
 // Initialize Database & Seed Admin
 // ========================================
-const db = new JsonDB(DB_FILE);
-
-function seedAdmin() {
-    const existing = db.findUserByEmail('admin@tkb.com');
-    if (!existing) {
-        const hashed = bcrypt.hashSync('Admin@123456', 10);
-        db.createUser({
-            id: generateId(),
-            email: 'admin@tkb.com',
-            displayName: 'Admin',
-            password: hashed,
-            role: 'admin',
-            createdAt: new Date().toISOString()
-        });
-        console.log('');
-        console.log('╔══════════════════════════════════════════╗');
-        console.log('║    ✅ Tài khoản Admin đã được tạo        ║');
-        console.log('║    Email:    admin@tkb.com               ║');
-        console.log('║    Mật khẩu: Admin@123456                ║');
-        console.log('╚══════════════════════════════════════════╝');
-        console.log('');
+async function seedAdmin() {
+    try {
+        const existing = await User.findOne({ email: 'admin@tkb.com' });
+        if (!existing) {
+            const hashed = bcrypt.hashSync('Admin@123456', 10);
+            await User.create({
+                email: 'admin@tkb.com',
+                displayName: 'Admin',
+                password: hashed,
+                role: 'admin'
+            });
+            console.log('');
+            console.log('╔══════════════════════════════════════════╗');
+            console.log('║    ✅ Tài khoản Admin đã được tạo       ║');
+            console.log('║    Email:    admin@tkb.com              ║');
+            console.log('║    Mật khẩu: Admin@123456               ║');
+            console.log('╚══════════════════════════════════════════╝');
+            console.log('');
+        }
+    } catch (e) {
+        console.error('Lỗi khi mồi tài khoản Admin:', e);
     }
-}
-
-function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 }
 
 // ========================================
@@ -136,7 +108,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ========================================
 // Auth Middleware
 // ========================================
-function authRequired(req, res, next) {
+async function authRequired(req, res, next) {
     const header = req.headers.authorization;
     if (!header || !header.startsWith('Bearer ')) {
         return res.status(401).json({ error: 'Token không hợp lệ' });
@@ -144,7 +116,7 @@ function authRequired(req, res, next) {
     try {
         const token = header.replace('Bearer ', '');
         const decoded = jwt.verify(token, JWT_SECRET);
-        const user = db.findUserById(decoded.id);
+        const user = await User.findById(decoded.id);
         if (!user) return res.status(401).json({ error: 'Tài khoản không tồn tại' });
         req.user = user;
         next();
@@ -163,28 +135,32 @@ function adminRequired(req, res, next) {
 // ========================================
 // Auth Routes
 // ========================================
-app.post('/api/auth/login', (req, res) => {
-    const { email, password } = req.body;
-    if (!email || !password) {
-        return res.status(400).json({ error: 'Vui lòng nhập email và mật khẩu' });
-    }
-
-    const user = db.findUserByEmail(email);
-    if (!user || !bcrypt.compareSync(password, user.password)) {
-        return res.status(401).json({ error: 'Email hoặc mật khẩu không đúng' });
-    }
-
-    const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
-
-    res.json({
-        token,
-        user: {
-            id: user.id,
-            email: user.email,
-            displayName: user.displayName,
-            role: user.role
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Vui lòng nhập email và mật khẩu' });
         }
-    });
+
+        const user = await User.findOne({ email: email.toLowerCase() });
+        if (!user || !bcrypt.compareSync(password, user.password)) {
+            return res.status(401).json({ error: 'Email hoặc mật khẩu không đúng' });
+        }
+
+        const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+
+        res.json({
+            token,
+            user: {
+                id: user.id,
+                email: user.email,
+                displayName: user.displayName,
+                role: user.role
+            }
+        });
+    } catch (e) {
+        res.status(500).json({ error: 'Lỗi server' });
+    }
 });
 
 app.get('/api/auth/me', authRequired, (req, res) => {
@@ -199,116 +175,144 @@ app.get('/api/auth/me', authRequired, (req, res) => {
 // ========================================
 // User Management Routes (Admin Only)
 // ========================================
-app.get('/api/users', authRequired, adminRequired, (req, res) => {
-    res.json(db.getUsers());
+app.get('/api/users', authRequired, adminRequired, async (req, res) => {
+    try {
+        const users = await User.find().sort({ createdAt: -1 });
+        res.json(users);
+    } catch (e) {
+        res.status(500).json({ error: 'Lỗi server' });
+    }
 });
 
-app.post('/api/users', authRequired, adminRequired, (req, res) => {
-    const { email, password, displayName } = req.body;
+app.post('/api/users', authRequired, adminRequired, async (req, res) => {
+    try {
+        const { email, password, displayName } = req.body;
 
-    if (!email || !password || !displayName) {
-        return res.status(400).json({ error: 'Vui lòng điền đầy đủ thông tin' });
+        if (!email || !password || !displayName) {
+            return res.status(400).json({ error: 'Vui lòng điền đầy đủ thông tin' });
+        }
+
+        if (password.length < 6) {
+            return res.status(400).json({ error: 'Mật khẩu phải có ít nhất 6 ký tự' });
+        }
+
+        const existingUser = await User.findOne({ email: email.toLowerCase() });
+        if (existingUser) {
+            return res.status(409).json({ error: 'Email này đã được sử dụng' });
+        }
+
+        const hashed = bcrypt.hashSync(password, 10);
+        const newUser = await User.create({
+            email: email.toLowerCase().trim(),
+            displayName: displayName.trim(),
+            password: hashed,
+            role: 'user'
+        });
+
+        res.status(201).json(newUser);
+    } catch (e) {
+        res.status(500).json({ error: 'Lỗi server' });
     }
-
-    if (password.length < 6) {
-        return res.status(400).json({ error: 'Mật khẩu phải có ít nhất 6 ký tự' });
-    }
-
-    if (db.findUserByEmail(email)) {
-        return res.status(409).json({ error: 'Email này đã được sử dụng' });
-    }
-
-    const hashed = bcrypt.hashSync(password, 10);
-    const user = db.createUser({
-        id: generateId(),
-        email: email.toLowerCase().trim(),
-        displayName: displayName.trim(),
-        password: hashed,
-        role: 'user',
-        createdAt: new Date().toISOString()
-    });
-
-    res.status(201).json(user);
 });
 
-app.delete('/api/users/:id', authRequired, adminRequired, (req, res) => {
-    const userId = req.params.id;
+app.delete('/api/users/:id', authRequired, adminRequired, async (req, res) => {
+    try {
+        const userId = req.params.id;
 
-    // Prevent self-deletion
-    if (userId === req.user.id) {
-        return res.status(400).json({ error: 'Không thể xóa chính mình' });
-    }
+        // Prevent self-deletion
+        if (userId === req.user.id.toString()) {
+            return res.status(400).json({ error: 'Không thể xóa chính mình' });
+        }
 
-    if (db.deleteUser(userId)) {
-        res.json({ success: true });
-    } else {
-        res.status(404).json({ error: 'Không tìm thấy người dùng' });
+        const deleted = await User.findByIdAndDelete(userId);
+        if (deleted) {
+            res.json({ success: true });
+        } else {
+            res.status(404).json({ error: 'Không tìm thấy người dùng' });
+        }
+    } catch (e) {
+        res.status(500).json({ error: 'Lỗi server' });
     }
 });
 
 // ========================================
 // Schedule Routes
 // ========================================
-app.get('/api/schedules', authRequired, (req, res) => {
-    res.json(db.getSchedules());
-});
-
-app.post('/api/schedules', authRequired, adminRequired, (req, res) => {
-    const { name, periodStart, periodEnd, timeStart, timeEnd, room, lecturer, days, dateFrom, dateTo } = req.body;
-
-    if (!name || !periodStart || !periodEnd || !timeStart || !timeEnd || !room || !lecturer || !days || !dateFrom || !dateTo) {
-        return res.status(400).json({ error: 'Vui lòng điền đầy đủ thông tin' });
-    }
-
-    const schedule = db.createSchedule({
-        id: generateId(),
-        name: name.trim(),
-        periodStart: parseInt(periodStart),
-        periodEnd: parseInt(periodEnd),
-        timeStart,
-        timeEnd,
-        room: room.trim(),
-        lecturer: lecturer.trim(),
-        days,
-        dateFrom,
-        dateTo,
-        createdBy: req.user.id,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-    });
-
-    res.status(201).json(schedule);
-});
-
-app.put('/api/schedules/:id', authRequired, adminRequired, (req, res) => {
-    const { name, periodStart, periodEnd, timeStart, timeEnd, room, lecturer, days, dateFrom, dateTo } = req.body;
-
-    const updated = db.updateSchedule(req.params.id, {
-        name: name?.trim(),
-        periodStart: periodStart ? parseInt(periodStart) : undefined,
-        periodEnd: periodEnd ? parseInt(periodEnd) : undefined,
-        timeStart,
-        timeEnd,
-        room: room?.trim(),
-        lecturer: lecturer?.trim(),
-        days,
-        dateFrom,
-        dateTo,
-        updatedAt: new Date().toISOString()
-    });
-
-    if (updated) {
-        res.json(updated);
-    } else {
-        res.status(404).json({ error: 'Không tìm thấy môn học' });
+app.get('/api/schedules', authRequired, async (req, res) => {
+    try {
+        const schedules = await Schedule.find().sort({ createdAt: 1 });
+        res.json(schedules);
+    } catch (e) {
+        res.status(500).json({ error: 'Lỗi server' });
     }
 });
 
-app.delete('/api/schedules/:id', authRequired, adminRequired, (req, res) => {
-    if (db.deleteSchedule(req.params.id)) {
-        res.json({ success: true });
-    } else {
-        res.status(404).json({ error: 'Không tìm thấy môn học' });
+app.post('/api/schedules', authRequired, adminRequired, async (req, res) => {
+    try {
+        const { name, periodStart, periodEnd, timeStart, timeEnd, room, lecturer, days, dateFrom, dateTo } = req.body;
+
+        if (!name || !periodStart || !periodEnd || !timeStart || !timeEnd || !room || !lecturer || !days || !dateFrom || !dateTo) {
+            return res.status(400).json({ error: 'Vui lòng điền đầy đủ thông tin' });
+        }
+
+        const newSchedule = await Schedule.create({
+            name: name.trim(),
+            periodStart: parseInt(periodStart),
+            periodEnd: parseInt(periodEnd),
+            timeStart,
+            timeEnd,
+            room: room.trim(),
+            lecturer: lecturer.trim(),
+            days,
+            dateFrom,
+            dateTo,
+            createdBy: req.user.id
+        });
+
+        res.status(201).json(newSchedule);
+    } catch (e) {
+        res.status(500).json({ error: 'Lỗi server' });
+    }
+});
+
+app.put('/api/schedules/:id', authRequired, adminRequired, async (req, res) => {
+    try {
+        const { name, periodStart, periodEnd, timeStart, timeEnd, room, lecturer, days, dateFrom, dateTo } = req.body;
+
+        const updates = { updatedAt: new Date() };
+        if (name !== undefined) updates.name = name.trim();
+        if (periodStart !== undefined) updates.periodStart = parseInt(periodStart);
+        if (periodEnd !== undefined) updates.periodEnd = parseInt(periodEnd);
+        if (timeStart !== undefined) updates.timeStart = timeStart;
+        if (timeEnd !== undefined) updates.timeEnd = timeEnd;
+        if (room !== undefined) updates.room = room.trim();
+        if (lecturer !== undefined) updates.lecturer = lecturer.trim();
+        if (days !== undefined) updates.days = days;
+        if (dateFrom !== undefined) updates.dateFrom = dateFrom;
+        if (dateTo !== undefined) updates.dateTo = dateTo;
+
+        const updated = await Schedule.findByIdAndUpdate(req.params.id, updates, { new: true });
+        
+        if (updated) {
+            res.json(updated);
+        } else {
+            res.status(404).json({ error: 'Không tìm thấy môn học' });
+        }
+    } catch (e) {
+        res.status(500).json({ error: 'Lỗi server' });
+    }
+});
+
+app.delete('/api/schedules/:id', authRequired, adminRequired, async (req, res) => {
+    try {
+        const deleted = await Schedule.findByIdAndDelete(req.params.id);
+        if (deleted) {
+            res.json({ success: true });
+        } else {
+            res.status(404).json({ error: 'Không tìm thấy môn học' });
+        }
+    } catch (e) {
+        res.status(500).json({ error: 'Lỗi server' });
     }
 });
 
