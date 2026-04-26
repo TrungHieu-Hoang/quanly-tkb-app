@@ -4,7 +4,7 @@
 const IS_WEB = window.IS_WEB_VERSION === true;
 const API_BASE = IS_WEB
     ? (window.location.origin)
-    : (localStorage.getItem('tkb_server_url') || '');
+    : (localStorage.getItem('tkb_server_url') || 'https://quanly-tkb-app.onrender.com');
 
 // ========================================
 // State Management
