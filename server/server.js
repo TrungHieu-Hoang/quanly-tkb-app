@@ -9,7 +9,7 @@ const mongoose = require('mongoose');
 // ========================================
 // Configuration
 // ========================================
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const JWT_SECRET = 'tkb-secret-2026-hoanghieu';
 const JWT_EXPIRES = '30d';
 
